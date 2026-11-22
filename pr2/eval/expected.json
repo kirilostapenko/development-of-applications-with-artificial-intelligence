@@ -1,0 +1,30 @@
+
+{
+  "images": [
+    {
+      "file": "images/person.jpg",
+      "expected": ["person"],
+      "note": "Людина"
+    },
+    {
+      "file": "images/bottle.jpg",
+      "expected": ["bottle"],
+      "note": "Пляшка"
+    },
+    {
+      "file": "images/beach.jpg",
+      "expected": [],
+      "note": "Пляж як сцена не входить до класів COCO"
+    },
+    {
+      "file": "images/car.jpg",
+      "expected": ["car"],
+      "note": "Автомобіль"
+    },
+    {
+      "file": "images/chair.jpg",
+      "expected": ["chair"],
+      "note": "Стілець"
+    }
+  ]
+}
