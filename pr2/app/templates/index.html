@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Локальна детекція об'єктів — ПР2</title>
+  <style>
+    body { max-width: 58rem; margin: 2rem auto; padding: 0 1rem; color: #20242b; background: #f5f7fa; font-family: system-ui, sans-serif; }
+    main { background: white; border: 1px solid #dfe4ea; border-radius: 14px; padding: 1.4rem; }
+    h1 { margin-top: 0; }
+    form { display: flex; gap: 1rem; align-items: end; flex-wrap: wrap; margin: 1.3rem 0; }
+    label { display: grid; gap: .4rem; }
+    input, button { font: inherit; }
+    input[type=number] { width: 6rem; padding: .45rem; }
+    button { border: 0; border-radius: 8px; padding: .65rem 1rem; background: #2459a6; color: white; cursor: pointer; }
+    button:disabled { opacity: .6; cursor: wait; }
+    #status { min-height: 1.5rem; }
+    .error { color: #b00020; }
+    .muted { color: #5e6875; }
+    .summary { display: flex; gap: 1rem; flex-wrap: wrap; margin: 1rem 0; }
+    .summary span { background: #eef3fa; border-radius: 8px; padding: .6rem .8rem; }
+    #preview-wrap { display: none; margin: 1rem 0; }
+    #preview { max-width: 100%; max-height: 34rem; display: block; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { padding: .6rem; border-bottom: 1px solid #e2e6eb; text-align: left; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Детекція об'єктів</h1>
+  <p class="muted">Зображення обробляється локально готовою моделлю YOLOv8n. Файл не надсилається до зовнішнього AI API.</p>
+  <form id="detect-form">
+    <label>Зображення
+      <input id="image" type="file" name="image" accept="image/*" required>
+    </label>
+    <label>Поріг упевненості
+      <input id="confidence" type="number" min="0" max="1" step="0.05" value="0.25">
+    </label>
+    <button id="submit" type="submit">Знайти об'єкти</button>
+  </form>
+  <p id="status" role="status"></p>
+  <section id="output" hidden>
+    <div class="summary">
+      <span>Знайдено об'єктів: <strong id="count">0</strong></span>
+      <span>Час inference: <strong id="time">—</strong> мс</span>
+      <span>Поріг: <strong id="threshold">—</strong></span>
+    </div>
+    <div id="preview-wrap"><img id="preview" alt="Завантажене зображення"></div>
+    <h2>Результати детекції</h2>
+    <div id="detections"></div>
+  </section>
+</main>
+<script>
+const form = document.getElementById('detect-form');
+const fileInput = document.getElementById('image');
+const statusEl = document.getElementById('status');
+const output = document.getElementById('output');
+const button = document.getElementById('submit');
+let previewUrl = null;
+
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const file = fileInput.files[0];
+  if (!file) {
+    statusEl.textContent = 'Спочатку виберіть зображення.';
+    statusEl.className = 'error';
+    return;
+  }
+  const threshold = Number(document.getElementById('confidence').value);
+  if (!Number.isFinite(threshold) || threshold < 0 || threshold > 1) {
+    statusEl.textContent = 'Поріг упевненості має бути від 0 до 1.';
+    statusEl.className = 'error';
+    return;
+  }
+
+  const data = new FormData();
+  data.append('image', file);
+  data.append('confidence', String(threshold));
+  button.disabled = true;
+  output.hidden = true;
+  statusEl.className = '';
+  statusEl.textContent = 'Модель обробляє зображення…';
+
+  try {
+    const response = await fetch('/api/detect', { method: 'POST', body: data });
+    const payload = await response.json();
+    if (!response.ok) throw new Error(payload.detail || 'Не вдалося обробити зображення.');
+
+    document.getElementById('count').textContent = payload.count;
+    document.getElementById('time').textContent = payload.inference_time_ms;
+    document.getElementById('threshold').textContent = payload.confidence_threshold;
+    const target = document.getElementById('detections');
+    target.replaceChildren();
+
+    if (payload.detections.length === 0) {
+      target.textContent = 'Об’єктів вище заданого порога не знайдено.';
+    } else {
+      const table = document.createElement('table');
+      table.innerHTML = '<thead><tr><th>Клас</th><th>Confidence</th><th>Координати рамки (x1, y1, x2, y2)</th></tr></thead>';
+      const tbody = document.createElement('tbody');
+      for (const item of payload.detections) {
+        const tr = document.createElement('tr');
+        const values = [
+          item.class_name,
+          (item.confidence * 100).toFixed(1) + '%',
+          `${item.box.x1}, ${item.box.y1}, ${item.box.x2}, ${item.box.y2}`
+        ];
+        for (const value of values) {
+          const td = document.createElement('td');
+          td.textContent = value;
+          tr.appendChild(td);
+        }
+        tbody.appendChild(tr);
+      }
+      table.appendChild(tbody);
+      target.appendChild(table);
+    }
+
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    previewUrl = URL.createObjectURL(file);
+    document.getElementById('preview').src = previewUrl;
+    document.getElementById('preview-wrap').style.display = 'block';
+    output.hidden = false;
+    statusEl.textContent = 'Готово.';
+  } catch (error) {
+    statusEl.className = 'error';
+    statusEl.textContent = 'Помилка: ' + error.message;
+  } finally {
+    button.disabled = false;
+  }
+});
+</script>
+</body>
+</html>
