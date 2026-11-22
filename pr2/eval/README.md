@@ -40,7 +40,7 @@
 |---|---|---|---|---|---|---|
 | 1 | person.jpg | person | person | - | - | 55.09 |
 | 2 | bottle.jpg | bottle | vase | bottle | vase | 60.97 |
-| 3 | beach.jpg | beach | kite | beach | kite | 89.4 |
+| 3 | beach.jpg | - | kite | - | kite | 89.4 |
 | 4 | car.jpg | car | train | car | train | 52.77 |
 | 5 | chair.jpg | chair | chair, potted plant, vase, book | - | potted plant, vase, book | 133.44 |
 
